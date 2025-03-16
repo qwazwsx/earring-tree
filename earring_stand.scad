@@ -1,6 +1,11 @@
-// This work is based on Customizable Tree by Thingiverse, originally licensed under CC BY-SA 3.0, upgraded to CC BY-SA 4.0, and is now licensed under GNU GPL 3.0+.
-// Original: https://www.thingiverse.com/thing:279864
-// 
+// This work is based on "Customizable Tree" by Thingiverse, originally licensed under CC BY-SA 3.0.  
+// It has been upgraded to CC BY-SA 4.0 and is now licensed under GNU GPL 3.0 or later.  
+//  
+// Original "Customizable Tree": https://www.thingiverse.com/thing:279864  
+// Modified version ("Earring Stand"): https://github.com/qwazwsx/earring-tree  
+//  
+// Per the terms of CC BY-SA 4.0, this work has been relicensed under GNU GPL 3.0+.  
+// Attribution to the original creator is required under both licenses.
 use <Write.scad>
 use <hsvtorgb.scad>
 use <3dvector.scad>
@@ -67,6 +72,15 @@ allow_all_overhangs = 0; //[0:No, 1:Yes]
 //If the previous control is set to No, how much overhang angle, in degrees, do you want to allow?
 allowed_overhang_angle = 50; //[30:65]
 
+/*[Tray]*/
+
+// if we want to create a tray at the base of the tree (for earring backs)
+create_tray = 1; //[0:No, 1:Yes]
+// the depth of the tray in mm
+tray_depth = 5; //[0:10]
+// the width of the walls of the tray in mm
+tray_wall_width = 3; //[0:10]
+
 /*[Variation]*/
 
 //Change this to get different variants based on your inputs.
@@ -126,6 +140,7 @@ if(base_shape > 0)
     // Extrude a circle with the specified radius and number of facets
     linear_extrude(height = 1)
         circle(r = base_size / 2, $fn = base_shape);
+
 }
 else
 {
@@ -135,6 +150,16 @@ else
         // Extrude a circle with the specified radius and number of facets
         linear_extrude(height = 1)
             circle(r = base_size / 2, $fn = branch_cross_section_shape);
+
+        if (create_tray){
+            difference() {
+                linear_extrude(height = tray_depth)
+                    circle(r = base_size / 2, $fn = branch_cross_section_shape);
+
+                linear_extrude(height = tray_depth + 1) // add 1 to avoid weird zfighting in preview
+                    circle(r = (base_size / 2) - tray_wall_width, $fn = branch_cross_section_shape);
+            }
+        }
     }
     else
     {
@@ -152,6 +177,10 @@ else
             linear_extrude(height = 1)
                 scale([1 / 100 * base_size, 1 / 100 * base_size])
                     polygon(points=reduce_shape_to_32_points(custom_shape)[0], paths=reduce_shape_to_32_points(custom_shape)[1]);
+        }
+
+        if (create_tray){
+            assert(false, "Custom shapes + tray not implemented yet. PR's welcome!"); // TODO: implement this
         }
     }
 }
@@ -217,7 +246,7 @@ difference()
         if(len(custom_shape) == 0)
         {
             // Display a message to draw a shape
-            write("<----------Draw a Shape!", space=1.05, center = true, font = "write/orbitron.dxf");
+            assert(false, "Please draw a shape in the custom_shape variable to use this option.");
         }
         else
         {
@@ -329,6 +358,7 @@ difference()
         }
     }
     // Translate and create a cube to represent the base of the tree
+    // the vectors always point up so I don't know why we do this
     translate([0,0,-150])
         cube([300,300,300], center = true);
 }
@@ -443,7 +473,7 @@ module draw_vector_branch_from_polygon
                 )
                     // Scale the root of the branch
                     scale(my_root_scale)
-                        child();
+                        children();
 
                 // Compute normalized branch direction.
                 norm_dir = normalize_3DVector(my_direction);
@@ -511,18 +541,18 @@ module draw_vector_branch_from_polygon
                                 max_branching = current_iteration + 2,
                                 extend_branch = my_extend_branch
                             )
-                                child();
+                                children();
                         }
                     }
                     // Loop through each branch
                     for(i = [0:num_branches - 1])
                     {
-                        assign
-                        (
+                        
+                        
                             // Calculate the new branch direction
-                            new_branch_direction = rotAxisAngle_3DVector(rotAxisAngle_3DVector(my_direction, random_3DVector(my_seed), new_branches_branching_angle[i]), my_direction, 360 / num_branches * i)
-                        )
-                        {
+                            new_branch_direction = rotAxisAngle_3DVector(rotAxisAngle_3DVector(my_direction, random_3DVector(my_seed), new_branches_branching_angle[i]), my_direction, 360 / num_branches * i);
+                        
+                        
                             // Check if overhangs are allowed
                             if(overhangs_allowed == true || overhangs_allowed == 1)
                             {
@@ -543,7 +573,7 @@ module draw_vector_branch_from_polygon
                                     overhangs_allowed = true,
                                     extend_branch = my_extend_branch
                                 )
-                                    child();
+                                    children();
                             }
                             else
                             {
@@ -566,12 +596,12 @@ module draw_vector_branch_from_polygon
                                         overhangs_allowed = false,
                                         extend_branch = my_extend_branch
                                     )
-                                        child();
+                                        children();
                                 }
                                 else
                                 {
-                                    assign
-                                    (
+                                    
+                                    
                                         // Correct the branch direction to ensure proper overhang
                                         corrected_branch_direction = rotAxisAngle_3DVector
                                         (
@@ -586,9 +616,9 @@ module draw_vector_branch_from_polygon
                                             ),
                                             [0,0,1],
                                             rands(-30, 30, 1, my_seed)[0]
-                                        )
-                                    )
-                                    {
+                                        );
+                                    
+                                    
                                         // Draw the vector branch from the polygon with the corrected branch direction
                                         draw_vector_branch_from_polygon
                                         (
@@ -604,11 +634,11 @@ module draw_vector_branch_from_polygon
                                             max_branching = current_iteration + 2,
                                             overhangs_allowed = false
                                         )
-                                            child();
-                                    }
+                                            children();
+                                    
                                 }
                             }
-                        }
+                        
                     }
                 }
             }
@@ -619,7 +649,7 @@ module draw_vector_branch_from_polygon
         // Display an error message if the polygon bounding size is not defined
         if(polygon_bounding_size == undef)
         {
-            echo("You have to provide a bounding size of the polygon due to limitations of OpenSCAD");
+            assert(false,"You have to provide a bounding size of the polygon due to limitations of OpenSCAD");
         }
     }
 }
@@ -677,7 +707,7 @@ module draw_capped_vector_from_polygon
                 {
                     // Extrude the polygon along the vector's length with the specified scale and twist
                     linear_extrude(height = magnatude, scale = scale_tip, twist = twist_poly)
-                    child();
+                    children();
                     
 					// if we're on a terminal branch, draw a cap
 					if (iterations_left == 0){
@@ -690,56 +720,6 @@ module draw_capped_vector_from_polygon
             }
         }
 }
-
-// module draw_vector_from_polygon
-// (
-//     vector = [10, 10, 10], // The vector direction and length
-//     root = [0, 0, 0], // The starting point of the vector
-//     scale_tip = .5, // The scale factor for the tip of the vector
-//     color_from_magnatude = true, // Whether to color the vector based on its magnitude
-//     magnatude_range = 100 // The range of magnitudes for coloring
-// )
-// {
-//     // Calculate the length of the vector in the XY plane
-//     xyLength = sqrt(pow(vector[0], 2) + pow(vector[1], 2));
-    
-//     // Calculate the magnitude of the vector
-//     magnatude = abs(sqrt(pow(vector[0], 2) + pow(vector[1], 2) + pow(vector[2], 2)));
-    
-//     // Calculate the angle in the Z plane
-//     zAngle = xyLength == 0 ? vector[0] > 0 ? 90 : -90 : acos(vector[1] / xyLength);
-    
-//     // Calculate the angle in the X plane
-//     xAngle = acos(xyLength / magnatude);
-    
-//     // Determine the real X angle based on the Z component of the vector
-//     realxAngle = vector[2] > 0 ? xAngle : -xAngle;
-    
-//     // Determine the real Z angle based on the X component of the vector
-//     realzAngle = vector[0] > 0 ? -zAngle : zAngle;
-    
-//     // Store the rotation angles in a vector
-//     vecRot = [realxAngle,realzAngle];
-    
-//     // Move the vector to start at the root location
-//     translate(root)
-    
-//     // Use the vector's magnitude compared to the magnitude range to determine its color
-//     color(hsvToRGB(magnatude / magnatude_range * 360,1,1,1))
-//         // Start with the vector pointing along the Y axis and then rotate it into place
-//         rotate([0, 0, vecRot[1]])
-//         {
-//             rotate([vecRot[0], 0, 0])
-//             {
-//                 rotate([-90, 0, 0])
-//                 {
-//                     // Extrude the polygon along the vector's length with the specified scale and twist
-//                     linear_extrude(height = magnatude, scale = scale_tip, twist = 90)
-//                     child();
-//                 }
-//             }
-//         }
-// }
 
 // Function to calculate the magnitude of a 3D vector
 function magnatude_3DVector(v) = sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
